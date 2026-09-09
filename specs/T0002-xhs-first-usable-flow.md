@@ -121,6 +121,10 @@ Each checkpoint must pass the existing authoritative CI commands:
 - `./gradlew assembleDebugAndroidTest`
 - Debug APK artifact upload
 
+### Baseline CI finding
+
+Android CI run `34335995057` attempt 1 failed in `:app:kspReleaseKotlin` with Room's `IllegalStateException: Empty schema file`. The commit changed documentation only, and attempt 2 on the identical commit completed all build steps successfully. This confirms a pre-existing nondeterministic race when debug and release KSP tasks export the same Room schema concurrently. The first implementation checkpoint must make schema generation deterministic before relying on repeated CI success; a successful retry alone is not considered a fix.
+
 ## Checkpoints
 
 1. `feat: add unified platform URL resolver`
