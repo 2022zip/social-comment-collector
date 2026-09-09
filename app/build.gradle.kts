@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
+    id("androidx.room")
 }
 
 android {
@@ -48,6 +49,7 @@ dependencies {
     androidTestImplementation("androidx.room:room-testing:2.6.1")
 }
 
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
+room {
+    schemaDirectory("debug", "$projectDir/schemas/debug")
+    schemaDirectory("release", "$projectDir/schemas/release")
 }
