@@ -8,6 +8,9 @@ class FakeCollectionTaskDao : CollectionTaskDao {
     override suspend fun insert(task: CollectionTaskEntity) {
         tasks.value = tasks.value + task
     }
+    override suspend fun update(task: CollectionTaskEntity) {
+        tasks.value = tasks.value.map { if (it.id == task.id) task else it }
+    }
     override suspend fun deleteById(id: String) {
         tasks.value = tasks.value.filterNot { it.id == id }
     }

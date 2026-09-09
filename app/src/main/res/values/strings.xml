@@ -16,4 +16,12 @@
     <string name="placeholder_message">此功能尚未实现，当前仅为应用骨架</string>
     <string name="secure_url_required">请输入完整的 HTTPS 网页地址</string>
     <string name="storage_unavailable">暂时无法读取本地任务</string>
+    <string name="invalid_url">请输入有效的完整网址</string>
+    <string name="unsupported_platform">当前仅识别小红书和即刻链接</string>
+    <string name="redirect_failed">短链接解析失败，请检查网络或改用完整链接</string>
+    <string name="platform_unavailable">已识别为即刻，该平台采集尚未开放</string>
+    <string name="login_required">请在下方网页中正常登录小红书，登录后将继续准备采集</string>
+    <string name="session_ready">小红书会话已就绪，任务进入采集准备状态</string>
+    <string name="session_cleared">小红书网页登录状态已清除</string>
+    <string name="session_unavailable">暂时无法检查小红书登录状态</string>
 </resources>

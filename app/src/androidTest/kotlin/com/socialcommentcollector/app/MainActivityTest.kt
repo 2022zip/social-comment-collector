@@ -22,10 +22,10 @@ class MainActivityTest {
             scenario.onActivity { activity ->
                 val browser = activity.findViewById<WebView>(R.id.web_view)
                 assertNotNull(browser)
-                assertFalse(browser.settings.javaScriptEnabled)
+                assertTrue(browser.settings.javaScriptEnabled)
                 assertFalse(browser.settings.allowFileAccess)
                 assertFalse(browser.settings.allowContentAccess)
-                assertFalse(browser.settings.domStorageEnabled)
+                assertTrue(browser.settings.domStorageEnabled)
                 assertEquals(WebSettings.MIXED_CONTENT_NEVER_ALLOW, browser.settings.mixedContentMode)
             }
         }

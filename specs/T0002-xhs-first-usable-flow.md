@@ -125,6 +125,16 @@ Each checkpoint must pass the existing authoritative CI commands:
 
 Android CI run `34335995057` attempt 1 failed in `:app:kspReleaseKotlin` with Room's `IllegalStateException: Empty schema file`. The commit changed documentation only, and attempt 2 on the identical commit completed all build steps successfully. This confirms a pre-existing nondeterministic race when debug and release KSP tasks export the same Room schema concurrently. The first implementation checkpoint must make schema generation deterministic before relying on repeated CI success; a successful retry alone is not considered a fix.
 
+### Checkpoint B boundary
+
+The start action resolves the URL through the application layer before creating one
+independent `QUEUED` Xiaohongshu task. Jike is recognized but rejected as unavailable.
+The session manager treats cookies only as evidence: `READY` additionally requires a
+successful Xiaohongshu page observation. A missing session opens the existing WebView
+for manual login; successful validation advances the task to `COLLECTING`, while a
+main-frame session load failure records `FAILED`. This checkpoint does not persist the
+resolved URL or change the Room schema, and it performs no content or comment parsing.
+
 ## Checkpoints
 
 1. `feat: add unified platform URL resolver`
