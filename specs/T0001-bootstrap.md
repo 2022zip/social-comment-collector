@@ -46,5 +46,21 @@ The observed environment failure does not establish toolchain incompatibility.
 
 Reset: local clean main and remote main both matched the required SHA with only
 .gitignore and README.md. No remote ticket branch existed at reset.
-Implementation and CI verification are in progress.
+First authoritative CI: run 34329183619 at a3d363a4013b314d68c6c8078b2c421aa2a8dbc3.
+Toolchain resolution succeeded; unit test compilation failed on missing production
+contracts. Production skeleton work now supplies those contracts without removing
+or weakening the existing tests.
+
+CollectionTaskDao retains the existing insert/observeAll/deleteById contract.
+CommentDao adds insert/insertAll/getByTaskId/countByTaskId. Displayed counts are
+nullable; the draft factory preserves the existing zero-count contract. Device
+tests cover null round trips, task and comment persistence, sorting and cascade
+deletion, Activity creation, input clearing and recreation, and WebView settings.
+Room is version 1 with no migration. Web navigation is HTTPS-only as a security
+boundary, without platform recognition; JavaScript and DOM storage remain disabled.
+Application locale preferences are separate from website login/session state.
+No cookies are inspected, cleared, or managed by application business code.
+
+Production skeleton acceptance follows the Android CI run for the published SHA;
+the run must complete unit tests, debug assembly, APK upload, and device test compilation.
 Manual Device Verification Pending.

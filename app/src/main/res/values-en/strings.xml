@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Comment Collector</string>
+    <string name="home_description">Paste a content link to identify its source and collect the post and all available comments.</string>
+    <string name="url_hint">Paste a content link</string>
+    <string name="clear_url">Clear input</string>
+    <string name="open_page">Open webpage</string>
+    <string name="start_collection">Start collection</string>
+    <string name="progress_list">Collection progress list</string>
+    <string name="share_markdown">Share latest Markdown</string>
+    <string name="clear_login">Clear website login state</string>
+    <string name="switch_language">简体中文</string>
+    <string name="web_region">Webpage</string>
+    <string name="no_tasks">No collection tasks</string>
+    <string name="task_count">Saved tasks: %1$d</string>
+    <string name="placeholder_message">This feature is not implemented yet.</string>
+    <string name="secure_url_required">Enter a complete HTTPS webpage address.</string>
+    <string name="storage_unavailable">Local tasks are currently unavailable.</string>
+</resources>

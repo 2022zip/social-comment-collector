@@ -8,6 +8,17 @@
 安全的空白 WebView、Room 数据库、ViewModel / Repository、中文与英文资源及基础测试。
 当前不包含真实平台采集、URL 平台识别、登录业务、评论翻页或正式 Markdown 导出。
 
+V0.1 未来计划支持小红书（Xiaohongshu）和即刻（Jike），不代表 T0001 已具备这些能力。
+首页说明描述未来产品目标；当前仅输入、清空、打开 HTTPS 网页和中英文切换可操作，
+其余按钮明确提示尚未实现。WebView 默认 about:blank，JavaScript、DOM storage、
+文件访问和内容 URI 访问均关闭，不处理平台 Cookie 或登录状态。
+
+Room version 1 使用稳定 UUID 主键、任务关联外键及状态/平台转换器。
+displayedCommentCount 可为 null（未知）；草稿工厂按既有测试契约初始化为 0。
+DAO 遵循当前测试约定，提供任务插入、观察、删除，以及评论插入、批量插入、排序读取和计数。
+UI 通过 ViewModel / Repository 观察任务；创建草稿不会触发采集或自动持久化。
+Room 和 Activity 设备测试已建立，CI 只编译它们，未执行不记为 PASS。
+
 ## 技术基线
 
 | 项目 | 固定版本 |
