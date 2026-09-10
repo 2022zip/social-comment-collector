@@ -2,6 +2,8 @@ package com.socialcommentcollector.app
 
 import android.os.Bundle
 import android.net.Uri
+import android.content.pm.ApplicationInfo
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceError
@@ -28,6 +30,10 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.socialcommentcollector.app.ui.MainViewModel
+import com.socialcommentcollector.app.platform.xiaohongshu.diagnostics.AndroidWebViewDiagnosticEvaluator
+import com.socialcommentcollector.app.platform.xiaohongshu.diagnostics.DiagnosticObservation
+import com.socialcommentcollector.app.platform.xiaohongshu.diagnostics.DiagnosticSnapshot
+import com.socialcommentcollector.app.platform.xiaohongshu.diagnostics.XiaohongshuExtractionDiagnostics
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -92,6 +98,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         browser.loadUrl("about:blank")
+        configureExtractionDiagnostics()
         findViewById<Button>(R.id.open_page).setOnClickListener {
             val uri = Uri.parse(model.uiState.value.url.trim())
             if (isSecureWebAddress(uri)) browser.loadUrl(uri.toString())
@@ -132,6 +139,60 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun configureExtractionDiagnostics() {
+        if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) return
+
+        val action = findViewById<Button>(R.id.run_page_diagnostics)
+        val output = findViewById<TextView>(R.id.page_diagnostics_output)
+        action.visibility = View.VISIBLE
+        output.visibility = View.VISIBLE
+        val diagnostics = XiaohongshuExtractionDiagnostics(AndroidWebViewDiagnosticEvaluator(browser))
+        action.setOnClickListener {
+            action.isEnabled = false
+            output.text = getString(R.string.page_diagnostics_running)
+            lifecycleScope.launch {
+                runCatching { diagnostics.captureAndObserveScroll() }
+                    .onSuccess { output.text = diagnosticReport(it) }
+                    .onFailure {
+                        output.text = getString(
+                            R.string.page_diagnostics_failed,
+                            it.message?.take(160).orEmpty(),
+                        )
+                    }
+                action.isEnabled = true
+            }
+        }
+    }
+
+    private fun diagnosticReport(observation: DiagnosticObservation): String {
+        val outcome = when (observation) {
+            is DiagnosticObservation.Changed -> getString(R.string.page_diagnostics_changed)
+            is DiagnosticObservation.NavigationChanged -> getString(R.string.page_diagnostics_navigation_changed)
+            is DiagnosticObservation.Stalled -> getString(R.string.page_diagnostics_stalled)
+        }
+        val snapshot = observation.after
+        return getString(
+            R.string.page_diagnostics_report,
+            outcome,
+            observation.observationCount,
+            snapshot.safeUrl,
+            snapshot.readyState,
+            snapshot.title,
+            snapshot.elementCount,
+            snapshot.scrollHeight,
+            snapshot.viewportHeight,
+            snapshot.structuredStateKeys.joinToString(),
+            snapshot.semanticEvidence(),
+        )
+    }
+
+    private fun DiagnosticSnapshot.semanticEvidence(): String = semanticEntries
+        .joinToString(separator = "\n") { entry ->
+            listOfNotNull(entry.tag, entry.role, entry.label, entry.text.takeIf(String::isNotBlank))
+                .joinToString(" | ")
+        }
+        .ifBlank { getString(R.string.page_diagnostics_no_semantic_evidence) }
 
     private fun com.socialcommentcollector.app.ui.MainMessage.stringResource(): Int = when (this) {
         com.socialcommentcollector.app.ui.MainMessage.EMPTY_INPUT -> R.string.input_required

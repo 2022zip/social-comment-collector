@@ -26,4 +26,13 @@
     <string name="session_cleared">小红书网页登录状态已清除</string>
     <string name="session_error">暂时无法检查小红书登录状态</string>
     <string name="task_creation_failed">无法创建采集任务，请稍后重试</string>
+    <string name="run_page_diagnostics">运行页面诊断（仅调试）</string>
+    <string name="page_diagnostics_ready">页面诊断已就绪。不会读取 Cookie 或存储值。</string>
+    <string name="page_diagnostics_running">正在采集脱敏页面证据并观察一次滚动…</string>
+    <string name="page_diagnostics_failed">页面诊断失败：%1$s</string>
+    <string name="page_diagnostics_changed">观察到页面结构变化（不代表评论结束）</string>
+    <string name="page_diagnostics_navigation_changed">观察到页面导航变化</string>
+    <string name="page_diagnostics_stalled">观察窗口内无变化（不代表评论结束）</string>
+    <string name="page_diagnostics_no_semantic_evidence">无可见语义证据</string>
+    <string name="page_diagnostics_report">结果：%1$s\n观察次数：%2$d\n安全 URL：%3$s\n加载状态：%4$s\n标题：%5$s\n元素数：%6$d\n页面高度：%7$d\n视口高度：%8$d\n结构化状态键：%9$s\n语义快照：\n%10$s</string>
 </resources>

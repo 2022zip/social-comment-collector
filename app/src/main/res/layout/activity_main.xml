@@ -97,6 +97,21 @@
                 android:layout_gravity="end"
                 android:minHeight="48dp"
                 android:text="@string/switch_language" />
+            <Button
+                android:id="@+id/run_page_diagnostics"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="@string/run_page_diagnostics"
+                android:visibility="gone" />
+            <TextView
+                android:id="@+id/page_diagnostics_output"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:text="@string/page_diagnostics_ready"
+                android:textIsSelectable="true"
+                android:visibility="gone" />
         </LinearLayout>
     </ScrollView>
     <TextView

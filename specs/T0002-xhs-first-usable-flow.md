@@ -154,6 +154,24 @@ explicit `End` event produces `COMPLETED`; interruption after useful persisted d
 `INCOMPLETE`, otherwise `FAILED`. Fixtures verify this internal protocol but do not claim
 compatibility with the live Xiaohongshu DOM, APIs, or WebView extraction behavior.
 
+## Commit D discovery checkpoint
+
+The Codex environment has no Android SDK, emulator, `adb`, connected device, or reusable
+Android WebView login session. A read-only browser observation of the canonical reference
+note URL without its temporary query token was redirected by Xiaohongshu to an unavailable
+note page. The visible page stated that the note could not currently be viewed and should be
+opened by scanning in the Xiaohongshu app; it also exposed login and security-verification UI.
+
+That observation does not provide sufficient Android WebView evidence for title, author,
+body, publish time, displayed comment count, comment/reply records, lazy loading, pagination,
+or a normal end marker. Commit D therefore does not introduce production selectors or claim
+live extraction support. It adds a debug-only, one-shot WebView diagnostic bridge that emits
+only a query-free URL, document title, load state, bounded semantic text, structural counts,
+and structured-state key names. It never reads cookie or storage values, never exposes a
+JavaScript interface, and treats a bounded no-change observation as stalled rather than as
+end-of-comments. Real extraction remains gated on evidence captured from a logged-in Android
+WebView on a real device or emulator.
+
 ## Checkpoints
 
 1. `feat: add unified platform URL resolver`

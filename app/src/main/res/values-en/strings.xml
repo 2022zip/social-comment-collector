@@ -26,4 +26,13 @@
     <string name="session_cleared">The Xiaohongshu website session was cleared.</string>
     <string name="session_error">The Xiaohongshu session cannot be checked right now.</string>
     <string name="task_creation_failed">The collection task could not be created. Try again later.</string>
+    <string name="run_page_diagnostics">Run page diagnostics (debug only)</string>
+    <string name="page_diagnostics_ready">Page diagnostics are ready. Cookie and storage values are never read.</string>
+    <string name="page_diagnostics_running">Collecting sanitized page evidence and observing one scroll…</string>
+    <string name="page_diagnostics_failed">Page diagnostics failed: %1$s</string>
+    <string name="page_diagnostics_changed">Page structure changed (not an end-of-comments signal)</string>
+    <string name="page_diagnostics_navigation_changed">Page navigation changed</string>
+    <string name="page_diagnostics_stalled">No change in the observation window (not an end-of-comments signal)</string>
+    <string name="page_diagnostics_no_semantic_evidence">No visible semantic evidence</string>
+    <string name="page_diagnostics_report">Result: %1$s\nObservations: %2$d\nSafe URL: %3$s\nReady state: %4$s\nTitle: %5$s\nElements: %6$d\nPage height: %7$d\nViewport height: %8$d\nStructured state keys: %9$s\nSemantic snapshot:\n%10$s</string>
 </resources>

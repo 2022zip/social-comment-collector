@@ -19,6 +19,7 @@ class MainActivityTest {
             onView(withId(R.id.url_input)).check(matches(isDisplayed()))
             onView(withId(R.id.start_collection)).check(matches(withText(R.string.start_collection)))
             onView(withId(R.id.web_view)).check(matches(isDisplayed()))
+            onView(withId(R.id.run_page_diagnostics)).check(matches(isDisplayed()))
             scenario.onActivity { activity ->
                 val browser = activity.findViewById<WebView>(R.id.web_view)
                 assertNotNull(browser)
