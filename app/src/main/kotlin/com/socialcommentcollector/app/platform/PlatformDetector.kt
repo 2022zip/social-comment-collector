@@ -25,14 +25,16 @@ class PlatformDetector {
     }
 
     private fun detectHost(host: String): Platform = when {
-            host.isDomainOrSubdomainOf(XIAOHONGSHU_DOMAIN) -> Platform.XIAOHONGSHU
-            XIAOHONGSHU_SHORT_DOMAINS.any(host::isDomainOrSubdomainOf) -> Platform.XIAOHONGSHU
-            host.isDomainOrSubdomainOf(JIKE_DOMAIN) -> Platform.JIKE
-            else -> Platform.UNKNOWN
-        }
+        host.isDomainOrSubdomainOf(XIAOHONGSHU_DOMAIN) -> Platform.XIAOHONGSHU
+        XIAOHONGSHU_SHORT_DOMAINS.any { domain -> host.isDomainOrSubdomainOf(domain) } -> Platform.XIAOHONGSHU
+        host.isDomainOrSubdomainOf(JIKE_DOMAIN) -> Platform.JIKE
+        else -> Platform.UNKNOWN
+    }
 
     internal fun isXiaohongshuShortLink(uri: URI): Boolean =
-        uri.normalizedHost()?.let { host -> XIAOHONGSHU_SHORT_DOMAINS.any(host::isDomainOrSubdomainOf) } == true
+        uri.normalizedHost()?.let { host ->
+            XIAOHONGSHU_SHORT_DOMAINS.any { domain -> host.isDomainOrSubdomainOf(domain) }
+        } == true
 
     private fun URI.normalizedHost(): String? =
         host?.lowercase(Locale.ROOT)?.removeSuffix(".")?.takeIf(String::isNotEmpty)
