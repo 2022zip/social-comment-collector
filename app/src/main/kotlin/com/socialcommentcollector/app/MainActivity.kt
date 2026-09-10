@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity() {
         viewModelFactory {
             initializer {
                 val app = application as CollectorApplication
-                MainViewModel(app.repository, createSavedStateHandle(), app.startCollection)
+                MainViewModel(app.repository, createSavedStateHandle(), app.startCollection, app.inputResolver)
             }
         }
     }
@@ -99,11 +99,7 @@ class MainActivity : AppCompatActivity() {
         }
         browser.loadUrl("about:blank")
         configureExtractionDiagnostics()
-        findViewById<Button>(R.id.open_page).setOnClickListener {
-            val uri = Uri.parse(model.uiState.value.url.trim())
-            if (isSecureWebAddress(uri)) browser.loadUrl(uri.toString())
-            else Toast.makeText(this, R.string.secure_url_required, Toast.LENGTH_SHORT).show()
-        }
+        findViewById<Button>(R.id.open_page).setOnClickListener { model.openWebPage() }
         findViewById<Button>(R.id.start_collection).setOnClickListener { model.startCollection() }
         findViewById<Button>(R.id.clear_login).setOnClickListener { model.clearXiaohongshuSession() }
         listOf(R.id.progress_list, R.id.share_markdown).forEach { id ->

@@ -4,7 +4,7 @@ import com.socialcommentcollector.app.data.CollectionRepository
 import com.socialcommentcollector.app.model.Platform
 import com.socialcommentcollector.app.platform.UrlResolutionFailure
 import com.socialcommentcollector.app.platform.UrlResolutionResult
-import com.socialcommentcollector.app.platform.UrlResolver
+import com.socialcommentcollector.app.platform.ShareInputResolver
 import com.socialcommentcollector.app.platform.xiaohongshu.XiaohongshuSessionManager
 import com.socialcommentcollector.app.platform.xiaohongshu.XiaohongshuSessionState
 import kotlinx.coroutines.CancellationException
@@ -45,15 +45,15 @@ sealed interface StartCollectionResult {
 
 class StartCollectionUseCase(
     private val repository: CollectionRepository,
-    private val urlResolver: UrlResolver,
+    private val inputResolver: ShareInputResolver,
     private val sessions: XiaohongshuSessionManager,
 ) {
-    suspend operator fun invoke(input: String): StartCollectionResult {
-        if (input.isBlank()) {
+    suspend operator fun invoke(rawInput: String): StartCollectionResult {
+        if (rawInput.isBlank()) {
             return StartCollectionResult.Error(StartCollectionError.EMPTY_INPUT)
         }
 
-        val resolved = urlResolver.resolve(input)
+        val resolved = inputResolver.resolve(rawInput)
         if (resolved is UrlResolutionResult.Failure) {
             return StartCollectionResult.Error(resolved.reason.toStartError())
         }

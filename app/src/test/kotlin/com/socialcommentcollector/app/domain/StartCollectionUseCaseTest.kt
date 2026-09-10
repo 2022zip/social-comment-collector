@@ -9,6 +9,8 @@ import com.socialcommentcollector.app.data.ImmediateTransactionRunner
 import com.socialcommentcollector.app.model.CollectionStatus
 import com.socialcommentcollector.app.model.Platform
 import com.socialcommentcollector.app.platform.RedirectResolver
+import com.socialcommentcollector.app.platform.ShareInputResolver
+import com.socialcommentcollector.app.platform.ShareTextUrlExtractor
 import com.socialcommentcollector.app.platform.UrlResolver
 import com.socialcommentcollector.app.platform.xiaohongshu.XiaohongshuCookieStore
 import com.socialcommentcollector.app.platform.xiaohongshu.XiaohongshuSessionManager
@@ -32,6 +34,24 @@ class StartCollectionUseCaseTest {
         val task = fixture.dao.tasks.value.single()
         assertEquals(CollectionStatus.QUEUED, task.status)
         assertEquals(Platform.XIAOHONGSHU, task.platform)
+    }
+
+    @Test
+    fun `full Xiaohongshu share text resolves before session and task creation`() = runTest {
+        val final = URI(
+            "https://www.xiaohongshu.com/explore/note-id?xsec_token=fixture&xsec_source=pc_feed",
+        )
+        val fixture = Fixture(cookie = "sessionid=valid", redirect = { final })
+        fixture.sessions.observePage(final.toString(), true)
+
+        val result = fixture.useCase(
+            "如果我能像你那么潇洒就好了 ... https://xhslink.cn/o/5teLYHz60xA 保留口令，直达【小红书】围观~",
+        )
+
+        assertTrue(result is StartCollectionResult.TaskReady)
+        result as StartCollectionResult.TaskReady
+        assertEquals(final.toString(), result.url)
+        assertEquals("https://xhslink.cn/o/5teLYHz60xA", fixture.dao.tasks.value.single().originalUrl)
     }
 
     @Test
@@ -96,7 +116,7 @@ class StartCollectionUseCaseTest {
         sessions.observePage("https://www.xiaohongshu.com/explore", true)
         val useCase = StartCollectionUseCase(
             CollectionRepository(ThrowingTaskDao(), FakeCommentDao(), ImmediateTransactionRunner),
-            UrlResolver(RedirectResolver { it }),
+            ShareInputResolver(ShareTextUrlExtractor(), UrlResolver(RedirectResolver { it })),
             sessions,
         )
 
@@ -119,7 +139,11 @@ class StartCollectionUseCaseTest {
         val dao = FakeCollectionTaskDao()
         private val repository = CollectionRepository(dao, FakeCommentDao(), ImmediateTransactionRunner, now = { 10L })
         val sessions = sessionManager(cookieLookup)
-        val useCase = StartCollectionUseCase(repository, UrlResolver(RedirectResolver(redirect)), sessions)
+        val useCase = StartCollectionUseCase(
+            repository,
+            ShareInputResolver(ShareTextUrlExtractor(), UrlResolver(RedirectResolver(redirect))),
+            sessions,
+        )
     }
 }
 

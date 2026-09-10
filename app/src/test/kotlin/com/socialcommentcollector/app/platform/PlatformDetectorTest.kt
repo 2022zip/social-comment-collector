@@ -18,6 +18,8 @@ class PlatformDetectorTest {
     fun `detects Xiaohongshu short URLs`() {
         assertEquals(Platform.XIAOHONGSHU, detector.detect("https://xhslink.com/a1b2"))
         assertEquals(Platform.XIAOHONGSHU, detector.detect("https://go.xhslink.com/a1b2"))
+        assertEquals(Platform.XIAOHONGSHU, detector.detect("https://xhslink.cn/o/a1b2"))
+        assertEquals(Platform.XIAOHONGSHU, detector.detect("https://go.xhslink.cn/o/a1b2"))
     }
 
     @Test
@@ -38,6 +40,8 @@ class PlatformDetectorTest {
     fun `matches parsed host rather than deceptive text`() {
         assertEquals(Platform.UNKNOWN, detector.detect("https://xiaohongshu.com.evil.example/post"))
         assertEquals(Platform.UNKNOWN, detector.detect("https://example.com/xhslink.com/post"))
+        assertEquals(Platform.UNKNOWN, detector.detect("https://xhslink.cn.evil.example/post"))
+        assertEquals(Platform.UNKNOWN, detector.detect("https://evil-xhslink.cn/post"))
         assertEquals(
             Platform.UNKNOWN,
             detector.detect("https://example.com/post?next=https://xiaohongshu.com/explore/1"),

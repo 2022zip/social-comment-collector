@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Comment Collector</string>
     <string name="home_description">Paste a content link to identify its source and collect the post and all available comments.</string>
-    <string name="url_hint">Paste a content link</string>
+    <string name="url_hint">Paste a link or share text</string>
     <string name="clear_url">Clear input</string>
     <string name="open_page">Open webpage</string>
     <string name="start_collection">Start collection</string>
@@ -17,7 +17,7 @@
     <string name="secure_url_required">Enter a complete HTTPS webpage address.</string>
     <string name="storage_unavailable">Local tasks are currently unavailable.</string>
     <string name="invalid_url">Enter a valid complete URL.</string>
-    <string name="input_required">Paste a content link first.</string>
+    <string name="input_required">Paste a link or share text first.</string>
     <string name="unsupported_platform">Only Xiaohongshu and Jike links are recognized.</string>
     <string name="redirect_failed">The short link could not be resolved. Check the network or use a full link.</string>
     <string name="jike_not_implemented">Jike was recognized, but collection will be available in a later version.</string>

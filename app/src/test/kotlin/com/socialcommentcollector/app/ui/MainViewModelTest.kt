@@ -9,6 +9,8 @@ import com.socialcommentcollector.app.domain.StartCollectionUseCase
 import com.socialcommentcollector.app.model.CollectionStatus
 import com.socialcommentcollector.app.model.Platform
 import com.socialcommentcollector.app.platform.RedirectResolver
+import com.socialcommentcollector.app.platform.ShareInputResolver
+import com.socialcommentcollector.app.platform.ShareTextUrlExtractor
 import com.socialcommentcollector.app.platform.UrlResolver
 import com.socialcommentcollector.app.platform.xiaohongshu.XiaohongshuCookieStore
 import com.socialcommentcollector.app.platform.xiaohongshu.XiaohongshuSessionManager
@@ -110,6 +112,23 @@ class MainViewModelTest {
     }
 
     @Test
+    fun openPageResolvesShareTextToFinalWebUrlWithoutCreatingTask() = runTest {
+        val final = URI(
+            "https://www.xiaohongshu.com/explore/note-id?xsec_token=fixture&xsec_source=pc_feed",
+        )
+        val fixture = StartFixture(null, redirect = { final })
+        fixture.model.updateUrl("分享一下 https://xhslink.cn/o/short 保留口令")
+
+        fixture.model.openWebPage()
+        advanceUntilIdle()
+
+        assertEquals(final.toString(), fixture.model.uiState.value.navigationRequest?.url)
+        assertEquals(Platform.XIAOHONGSHU, fixture.model.uiState.value.resolvedPlatform)
+        assertTrue(fixture.dao.tasks.value.isEmpty())
+        fixture.close()
+    }
+
+    @Test
     fun invalidAndJikeInputsExposeErrorsWithoutCreatingTask() = runTest {
         val fixture = StartFixture(null)
         fixture.model.updateUrl("invalid")
@@ -162,8 +181,10 @@ class MainViewModelTest {
             override fun cookiesFor(url: String): String? = cookie
             override suspend fun clear() = Unit
         })
-        private val useCase = StartCollectionUseCase(repository, UrlResolver(RedirectResolver(redirect)), sessions)
-        val model = MainViewModel(repository, SavedStateHandle(), useCase)
+        private val resolver = UrlResolver(RedirectResolver(redirect))
+        private val inputResolver = ShareInputResolver(ShareTextUrlExtractor(), resolver)
+        private val useCase = StartCollectionUseCase(repository, inputResolver, sessions)
+        val model = MainViewModel(repository, SavedStateHandle(), useCase, inputResolver)
         private val store = ViewModelStore().apply { put("main", model) }
         fun close() = store.clear()
     }

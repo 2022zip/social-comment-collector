@@ -63,7 +63,11 @@ class UrlResolver(
         }
 
         val finalPlatform = platformDetector.detect(finalUrl)
-        if (finalPlatform == Platform.UNKNOWN || finalPlatform != originalPlatform) {
+        if (
+            finalPlatform == Platform.UNKNOWN ||
+            finalPlatform != originalPlatform ||
+            platformDetector.isXiaohongshuShortLink(finalUrl)
+        ) {
             return UrlResolutionResult.Failure(UrlResolutionFailure.UNSUPPORTED_PLATFORM)
         }
 

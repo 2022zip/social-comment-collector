@@ -46,6 +46,44 @@ class UrlResolverTest {
     }
 
     @Test
+    fun `xhslink cn uses redirect resolver and preserves final query parameters`() = runTest {
+        val final = URI(
+            "https://www.xiaohongshu.com/explore/note-id?xsec_token=fixture-token&xsec_source=pc_feed",
+        )
+        val resolver = UrlResolver(
+            redirectResolver = RedirectResolver {
+                assertEquals(URI("https://xhslink.cn/o/short"), it)
+                final
+            },
+        )
+
+        val result = resolver.resolve("https://xhslink.cn/o/short")
+
+        assertTrue(result is UrlResolutionResult.Success)
+        assertEquals(final, (result as UrlResolutionResult.Success).finalUrl)
+    }
+
+    @Test
+    fun `share text rejects unsupported final redirect host`() = runTest {
+        val resolver = UrlResolver(RedirectResolver { URI("https://example.com/landing") })
+
+        assertEquals(
+            UrlResolutionResult.Failure(UrlResolutionFailure.UNSUPPORTED_PLATFORM),
+            resolver.resolve("https://xhslink.cn/o/short"),
+        )
+    }
+
+    @Test
+    fun `short redirect must terminate on Xiaohongshu web host`() = runTest {
+        val resolver = UrlResolver(RedirectResolver { URI("https://go.xhslink.com/still-short") })
+
+        assertEquals(
+            UrlResolutionResult.Failure(UrlResolutionFailure.UNSUPPORTED_PLATFORM),
+            resolver.resolve("https://xhslink.cn/o/short"),
+        )
+    }
+
+    @Test
     fun `rejects invalid input and unsupported hosts predictably`() = runTest {
         val resolver = UrlResolver(RedirectResolver { it })
 

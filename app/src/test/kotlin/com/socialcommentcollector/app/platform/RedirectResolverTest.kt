@@ -35,6 +35,19 @@ class RedirectResolverTest {
     }
 
     @Test
+    fun `follows relative redirects across approved short hosts and preserves final query`() = runTest {
+        val final = "https://www.xiaohongshu.com/explore/note?xsec_token=fixture&xsec_source=pc_feed"
+        val resolver = resolver(
+            "https://xhslink.cn/o/a" to redirect("/o/b"),
+            "https://xhslink.cn/o/b" to redirect("https://go.xhslink.com/c"),
+            "https://go.xhslink.com/c" to redirect(final),
+            final to ok(),
+        )
+
+        assertEquals(URI(final), resolver.resolve(URI("https://xhslink.cn/o/a")))
+    }
+
+    @Test
     fun `rejects redirect loops`() = runTest {
         val resolver = resolver(
             "https://xhslink.com/a" to redirect("/b"),

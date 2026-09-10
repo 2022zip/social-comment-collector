@@ -8,6 +8,9 @@ import com.socialcommentcollector.app.domain.StartCollectionError
 import com.socialcommentcollector.app.domain.StartCollectionResult
 import com.socialcommentcollector.app.domain.StartCollectionUseCase
 import com.socialcommentcollector.app.platform.xiaohongshu.XiaohongshuSessionState
+import com.socialcommentcollector.app.platform.UrlResolutionFailure
+import com.socialcommentcollector.app.platform.UrlResolutionResult
+import com.socialcommentcollector.app.platform.ShareInputResolver
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +23,7 @@ class MainViewModel(
     repository: CollectionRepository,
     private val savedState: SavedStateHandle,
     private val startCollection: StartCollectionUseCase? = null,
+    private val inputResolver: ShareInputResolver? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(MainUiState(url = savedState["url"] ?: ""))
     private val startGuard = AtomicBoolean(false)
@@ -39,6 +43,36 @@ class MainViewModel(
     }
 
     fun clearUrl() = updateUrl("")
+
+    fun openWebPage() {
+        val resolver = inputResolver ?: return
+        if (!startGuard.compareAndSet(false, true)) return
+        val input = mutableState.value.url
+        mutableState.update { it.copy(startInProgress = true, message = null) }
+        viewModelScope.launch {
+            try {
+                when (val result = resolver.resolve(input)) {
+                    is UrlResolutionResult.Success -> mutableState.update {
+                        it.copy(
+                            startInProgress = false,
+                            resolvedPlatform = result.platform,
+                            navigationRequest = WebNavigationRequest(System.nanoTime(), result.finalUrl.toString()),
+                        )
+                    }
+                    is UrlResolutionResult.Failure -> mutableState.update {
+                        it.copy(startInProgress = false, message = result.reason.toMessage())
+                    }
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                mutableState.update { it.copy(startInProgress = false, message = MainMessage.REDIRECT_FAILED) }
+            } finally {
+                startGuard.set(false)
+                mutableState.update { it.copy(startInProgress = false) }
+            }
+        }
+    }
 
     fun startCollection() {
         val useCase = startCollection ?: return
@@ -161,5 +195,14 @@ class MainViewModel(
         StartCollectionError.JIKE_NOT_IMPLEMENTED -> MainMessage.JIKE_NOT_IMPLEMENTED
         StartCollectionError.SESSION_ERROR -> MainMessage.SESSION_ERROR
         StartCollectionError.TASK_CREATION_FAILED -> MainMessage.TASK_CREATION_FAILED
+    }
+
+    private fun UrlResolutionFailure.toMessage(): MainMessage = when (this) {
+        UrlResolutionFailure.INVALID_URL -> MainMessage.INVALID_URL
+        UrlResolutionFailure.INSECURE_URL,
+        UrlResolutionFailure.INSECURE_REDIRECT,
+        -> MainMessage.INSECURE_URL
+        UrlResolutionFailure.UNSUPPORTED_PLATFORM -> MainMessage.UNSUPPORTED_PLATFORM
+        UrlResolutionFailure.REDIRECT_FAILED -> MainMessage.REDIRECT_FAILED
     }
 }

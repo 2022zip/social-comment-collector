@@ -36,13 +36,24 @@ WebView callbacks return session and collection events to the use case through e
 
 ## URL Resolution
 
+`ShareTextUrlExtractor` scans raw pasted content and selects the first supported platform URL,
+so canonical URLs and full share text use one input contract. It trims share punctuation at URL
+boundaries, skips earlier unsupported URLs, and returns a typed failure when no supported URL is
+present. Host validation remains delegated to `PlatformDetector`; matching arbitrary text is not
+accepted.
+
 `PlatformDetector` parses a URL and matches normalized hosts, never titles or arbitrary substring text.
 
-- Xiaohongshu: `xiaohongshu.com`, its subdomains, and `xhslink.com` plus its subdomains.
+- Xiaohongshu: `xiaohongshu.com`, `xhslink.com`, `xhslink.cn`, and their valid subdomains.
 - Jike: `okjike.com` and its subdomains.
 - Every other or malformed input: `Platform.UNKNOWN`.
 
-`UrlResolver` owns HTTPS redirect resolution for short links. Redirects are bounded, reject scheme downgrade, and return the final URL plus detected platform. Activity code does not perform redirect resolution.
+`UrlResolver` owns HTTPS redirect resolution for both Xiaohongshu short-link domains. Redirects
+are bounded, support relative `Location` values, reject scheme downgrade, loops, cross-platform
+destinations, and short-link landing pages as final results. The complete server-provided final
+web URL, including required query parameters, is preserved for WebView navigation. Query values
+are redacted only in diagnostic output. Both Open Webpage and Start Collection resolve the same
+raw input through the ViewModel; Activity code does not extract URLs or perform redirects.
 
 ## WebView and Session
 
