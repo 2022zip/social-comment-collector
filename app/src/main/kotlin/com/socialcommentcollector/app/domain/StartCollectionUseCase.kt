@@ -1,7 +1,6 @@
 package com.socialcommentcollector.app.domain
 
 import com.socialcommentcollector.app.data.CollectionRepository
-import com.socialcommentcollector.app.model.CollectionStatus
 import com.socialcommentcollector.app.model.Platform
 import com.socialcommentcollector.app.platform.UrlResolutionFailure
 import com.socialcommentcollector.app.platform.UrlResolutionResult
@@ -11,14 +10,37 @@ import com.socialcommentcollector.app.platform.xiaohongshu.XiaohongshuSessionSta
 import kotlinx.coroutines.CancellationException
 
 enum class StartCollectionError {
-    INVALID_URL, INSECURE_URL, UNSUPPORTED_PLATFORM, REDIRECT_FAILED,
-    INSECURE_REDIRECT, PLATFORM_UNAVAILABLE, SESSION_UNAVAILABLE,
+    EMPTY_INPUT,
+    INVALID_URL,
+    INSECURE_URL,
+    UNSUPPORTED_PLATFORM,
+    REDIRECT_FAILED,
+    INSECURE_REDIRECT,
+    JIKE_NOT_IMPLEMENTED,
+    SESSION_ERROR,
+    TASK_CREATION_FAILED,
 }
 
 sealed interface StartCollectionResult {
-    data class Collecting(val taskId: String, val url: String) : StartCollectionResult
-    data class LoginRequired(val taskId: String, val url: String) : StartCollectionResult
-    data class Error(val reason: StartCollectionError) : StartCollectionResult
+    data class TaskReady(
+        val taskId: String,
+        val url: String,
+        val platform: Platform = Platform.XIAOHONGSHU,
+        val sessionState: XiaohongshuSessionState = XiaohongshuSessionState.READY,
+    ) : StartCollectionResult
+
+    data class LoginRequired(
+        val originalUrl: String,
+        val url: String,
+        val platform: Platform = Platform.XIAOHONGSHU,
+        val sessionState: XiaohongshuSessionState,
+    ) : StartCollectionResult
+
+    data class Error(
+        val reason: StartCollectionError,
+        val platform: Platform = Platform.UNKNOWN,
+        val sessionState: XiaohongshuSessionState = XiaohongshuSessionState.UNKNOWN,
+    ) : StartCollectionResult
 }
 
 class StartCollectionUseCase(
@@ -27,57 +49,98 @@ class StartCollectionUseCase(
     private val sessions: XiaohongshuSessionManager,
 ) {
     suspend operator fun invoke(input: String): StartCollectionResult {
+        if (input.isBlank()) {
+            return StartCollectionResult.Error(StartCollectionError.EMPTY_INPUT)
+        }
+
         val resolved = urlResolver.resolve(input)
         if (resolved is UrlResolutionResult.Failure) {
             return StartCollectionResult.Error(resolved.reason.toStartError())
         }
         resolved as UrlResolutionResult.Success
+
         if (resolved.platform == Platform.JIKE) {
-            return StartCollectionResult.Error(StartCollectionError.PLATFORM_UNAVAILABLE)
+            return StartCollectionResult.Error(
+                StartCollectionError.JIKE_NOT_IMPLEMENTED,
+                platform = Platform.JIKE,
+            )
         }
         if (resolved.platform != Platform.XIAOHONGSHU) {
             return StartCollectionResult.Error(StartCollectionError.UNSUPPORTED_PLATFORM)
         }
 
-        val task = repository.createTask(resolved.originalUrl.toString(), resolved.platform)
-        val sessionState = try {
-            sessions.checkSession()
-        } catch (cancellation: CancellationException) {
-            throw cancellation
-        } catch (_: Exception) {
-            repository.updateStatus(task.id, CollectionStatus.FAILED, "Session unavailable")
-            return StartCollectionResult.Error(StartCollectionError.SESSION_UNAVAILABLE)
-        }
-        return when (sessionState) {
-            XiaohongshuSessionState.READY -> {
-                repository.updateStatus(task.id, CollectionStatus.COLLECTING)
-                StartCollectionResult.Collecting(task.id, resolved.finalUrl.toString())
-            }
-            XiaohongshuSessionState.UNKNOWN,
-            XiaohongshuSessionState.LOGIN_REQUIRED,
-            XiaohongshuSessionState.EXPIRED,
-            -> StartCollectionResult.LoginRequired(task.id, resolved.finalUrl.toString())
+        val sessionState = checkSession()
+            ?: return StartCollectionResult.Error(
+                StartCollectionError.SESSION_ERROR,
+                platform = Platform.XIAOHONGSHU,
+            )
+
+        return if (sessionState == XiaohongshuSessionState.READY) {
+            createQueuedTask(resolved.originalUrl.toString(), resolved.finalUrl.toString())
+        } else {
+            StartCollectionResult.LoginRequired(
+                originalUrl = resolved.originalUrl.toString(),
+                url = resolved.finalUrl.toString(),
+                sessionState = sessionState,
+            )
         }
     }
 
-    suspend fun pageObserved(taskId: String, url: String): StartCollectionResult {
-        return when (sessions.observePage(url, pageAccessConfirmed = true)) {
-            XiaohongshuSessionState.READY -> {
-                repository.updateStatus(taskId, CollectionStatus.COLLECTING)
-                StartCollectionResult.Collecting(taskId, url)
-            }
-            XiaohongshuSessionState.UNKNOWN,
-            XiaohongshuSessionState.LOGIN_REQUIRED,
-            XiaohongshuSessionState.EXPIRED,
-            -> StartCollectionResult.LoginRequired(taskId, url)
+    suspend fun resumeAfterPage(
+        originalUrl: String,
+        resolvedUrl: String,
+        observedUrl: String,
+        pageAccessConfirmed: Boolean,
+    ): StartCollectionResult {
+        val sessionState = try {
+            sessions.observePage(observedUrl, pageAccessConfirmed)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            return StartCollectionResult.Error(
+                StartCollectionError.SESSION_ERROR,
+                platform = Platform.XIAOHONGSHU,
+            )
+        }
+
+        return if (sessionState == XiaohongshuSessionState.READY) {
+            createQueuedTask(originalUrl, resolvedUrl)
+        } else {
+            StartCollectionResult.LoginRequired(
+                originalUrl = originalUrl,
+                url = resolvedUrl,
+                sessionState = sessionState,
+            )
         }
     }
 
     suspend fun clearSession() = sessions.clearSession()
 
-    suspend fun sessionUnavailable(taskId: String): StartCollectionResult {
-        repository.updateStatus(taskId, CollectionStatus.FAILED, "Session unavailable")
-        return StartCollectionResult.Error(StartCollectionError.SESSION_UNAVAILABLE)
+    fun sessionUnavailable(): StartCollectionResult = StartCollectionResult.Error(
+        StartCollectionError.SESSION_ERROR,
+        platform = Platform.XIAOHONGSHU,
+        sessionState = XiaohongshuSessionState.EXPIRED,
+    )
+
+    private fun checkSession(): XiaohongshuSessionState? = try {
+        sessions.checkSession()
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Exception) {
+        null
+    }
+
+    private suspend fun createQueuedTask(originalUrl: String, resolvedUrl: String): StartCollectionResult = try {
+        val task = repository.createTask(originalUrl, Platform.XIAOHONGSHU)
+        StartCollectionResult.TaskReady(task.id, resolvedUrl)
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Exception) {
+        StartCollectionResult.Error(
+            StartCollectionError.TASK_CREATION_FAILED,
+            platform = Platform.XIAOHONGSHU,
+            sessionState = XiaohongshuSessionState.READY,
+        )
     }
 
     private fun UrlResolutionFailure.toStartError(): StartCollectionError = when (this) {

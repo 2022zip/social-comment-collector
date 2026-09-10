@@ -134,15 +134,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun com.socialcommentcollector.app.ui.MainMessage.stringResource(): Int = when (this) {
+        com.socialcommentcollector.app.ui.MainMessage.EMPTY_INPUT -> R.string.input_required
         com.socialcommentcollector.app.ui.MainMessage.INVALID_URL -> R.string.invalid_url
         com.socialcommentcollector.app.ui.MainMessage.INSECURE_URL -> R.string.secure_url_required
         com.socialcommentcollector.app.ui.MainMessage.UNSUPPORTED_PLATFORM -> R.string.unsupported_platform
         com.socialcommentcollector.app.ui.MainMessage.REDIRECT_FAILED -> R.string.redirect_failed
-        com.socialcommentcollector.app.ui.MainMessage.PLATFORM_UNAVAILABLE -> R.string.platform_unavailable
+        com.socialcommentcollector.app.ui.MainMessage.JIKE_NOT_IMPLEMENTED -> R.string.jike_not_implemented
         com.socialcommentcollector.app.ui.MainMessage.LOGIN_REQUIRED -> R.string.login_required
-        com.socialcommentcollector.app.ui.MainMessage.SESSION_READY -> R.string.session_ready
+        com.socialcommentcollector.app.ui.MainMessage.PREPARING_COLLECTION -> R.string.preparing_collection
         com.socialcommentcollector.app.ui.MainMessage.SESSION_CLEARED -> R.string.session_cleared
-        com.socialcommentcollector.app.ui.MainMessage.SESSION_UNAVAILABLE -> R.string.session_unavailable
+        com.socialcommentcollector.app.ui.MainMessage.SESSION_ERROR -> R.string.session_error
+        com.socialcommentcollector.app.ui.MainMessage.TASK_CREATION_FAILED -> R.string.task_creation_failed
     }
 
     // Restrict WebView navigation schemes; platform/source recognition belongs to T0002.

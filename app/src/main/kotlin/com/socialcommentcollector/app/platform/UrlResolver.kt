@@ -52,6 +52,8 @@ class UrlResolver(
             redirectResolver.resolve(originalUrl)
         } catch (cancellation: CancellationException) {
             throw cancellation
+        } catch (failure: RedirectResolutionException) {
+            return UrlResolutionResult.Failure(failure.reason.toUrlResolutionFailure())
         } catch (_: Exception) {
             return UrlResolutionResult.Failure(UrlResolutionFailure.REDIRECT_FAILED)
         }
@@ -80,6 +82,16 @@ class UrlResolver(
             !isOpaque &&
             host != null &&
             userInfo == null
+
+    private fun RedirectFailure.toUrlResolutionFailure(): UrlResolutionFailure = when (this) {
+        RedirectFailure.INSECURE_REDIRECT -> UrlResolutionFailure.INSECURE_REDIRECT
+        RedirectFailure.UNSUPPORTED_FINAL_URL -> UrlResolutionFailure.UNSUPPORTED_PLATFORM
+        RedirectFailure.LOOP,
+        RedirectFailure.TOO_MANY_REDIRECTS,
+        RedirectFailure.INVALID_LOCATION,
+        RedirectFailure.HTTP_ERROR,
+        -> UrlResolutionFailure.REDIRECT_FAILED
+    }
 
     private companion object {
         const val HTTPS_SCHEME = "https"

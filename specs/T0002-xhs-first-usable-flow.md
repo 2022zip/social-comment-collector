@@ -127,13 +127,16 @@ Android CI run `34335995057` attempt 1 failed in `:app:kspReleaseKotlin` with Ro
 
 ### Checkpoint B boundary
 
-The start action resolves the URL through the application layer before creating one
-independent `QUEUED` Xiaohongshu task. Jike is recognized but rejected as unavailable.
+The start action resolves the URL and verifies the Xiaohongshu session through the
+application layer before creating one independent `QUEUED` task. Jike is recognized
+but returns the typed `JIKE_NOT_IMPLEMENTED` result.
 The session manager treats cookies only as evidence: `READY` additionally requires a
 successful Xiaohongshu page observation. A missing session opens the existing WebView
-for manual login; successful validation advances the task to `COLLECTING`, while a
-main-frame session load failure records `FAILED`. This checkpoint does not persist the
-resolved URL or change the Room schema, and it performs no content or comment parsing.
+for manual login without creating a task; successful revalidation creates the queued
+task and exposes collection preparation state. A main-frame load failure returns a
+typed session error without fabricating a failed task. The V0.1 clear action removes
+all WebView cookies, but never Room data. This checkpoint does not persist the resolved
+URL or change the Room schema, and it performs no content or comment parsing.
 
 ## Checkpoints
 

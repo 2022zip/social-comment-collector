@@ -7,6 +7,9 @@ import com.socialcommentcollector.app.data.CollectionRepository
 import com.socialcommentcollector.app.domain.StartCollectionError
 import com.socialcommentcollector.app.domain.StartCollectionResult
 import com.socialcommentcollector.app.domain.StartCollectionUseCase
+import com.socialcommentcollector.app.platform.xiaohongshu.XiaohongshuSessionState
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -19,6 +22,7 @@ class MainViewModel(
     private val startCollection: StartCollectionUseCase? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(MainUiState(url = savedState["url"] ?: ""))
+    private val startGuard = AtomicBoolean(false)
     val uiState = mutableState.asStateFlow()
 
     init {
@@ -38,30 +42,72 @@ class MainViewModel(
 
     fun startCollection() {
         val useCase = startCollection ?: return
+        if (!startGuard.compareAndSet(false, true)) return
+        val input = mutableState.value.url
         mutableState.update { it.copy(startInProgress = true, message = null) }
         viewModelScope.launch {
-            applyResult(useCase(mutableState.value.url))
+            try {
+                applyResult(useCase(input))
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                applyResult(StartCollectionResult.Error(StartCollectionError.SESSION_ERROR))
+            } finally {
+                startGuard.set(false)
+                mutableState.update { it.copy(startInProgress = false) }
+            }
         }
     }
 
     fun onXiaohongshuPageLoaded(url: String) {
         val useCase = startCollection ?: return
-        val taskId = mutableState.value.pendingTaskId ?: return
-        viewModelScope.launch { applyResult(useCase.pageObserved(taskId, url)) }
+        val pending = mutableState.value.pendingRequest ?: return
+        if (!startGuard.compareAndSet(false, true)) return
+        mutableState.update { it.copy(startInProgress = true) }
+        viewModelScope.launch {
+            try {
+                applyResult(
+                    useCase.resumeAfterPage(
+                        originalUrl = pending.originalUrl,
+                        resolvedUrl = pending.resolvedUrl,
+                        observedUrl = url,
+                        pageAccessConfirmed = true,
+                    ),
+                )
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                applyResult(useCase.sessionUnavailable())
+            } finally {
+                startGuard.set(false)
+                mutableState.update { it.copy(startInProgress = false) }
+            }
+        }
     }
 
     fun onXiaohongshuPageUnavailable() {
         val useCase = startCollection ?: return
-        val taskId = mutableState.value.pendingTaskId ?: return
-        viewModelScope.launch { applyResult(useCase.sessionUnavailable(taskId)) }
+        if (mutableState.value.pendingRequest == null) return
+        applyResult(useCase.sessionUnavailable())
     }
 
     fun clearXiaohongshuSession() {
         val useCase = startCollection ?: return
         viewModelScope.launch {
-            useCase.clearSession()
-            mutableState.update {
-                it.copy(message = MainMessage.SESSION_CLEARED, pendingTaskId = null)
+            try {
+                useCase.clearSession()
+                mutableState.update {
+                    it.copy(
+                        message = MainMessage.SESSION_CLEARED,
+                        sessionState = XiaohongshuSessionState.LOGIN_REQUIRED,
+                        loginRequired = false,
+                        pendingRequest = null,
+                    )
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                mutableState.update { it.copy(message = MainMessage.SESSION_ERROR) }
             }
         }
     }
@@ -69,36 +115,51 @@ class MainViewModel(
     fun consumeMessage() = mutableState.update { it.copy(message = null) }
 
     private fun applyResult(result: StartCollectionResult) {
-        val requestId = System.nanoTime()
         mutableState.update { state ->
             when (result) {
-                is StartCollectionResult.Collecting -> state.copy(
+                is StartCollectionResult.TaskReady -> state.copy(
                     startInProgress = false,
-                    message = MainMessage.SESSION_READY,
-                    navigationRequest = WebNavigationRequest(requestId, result.url),
-                    pendingTaskId = null,
+                    resolvedPlatform = result.platform,
+                    sessionState = result.sessionState,
+                    loginRequired = false,
+                    message = MainMessage.PREPARING_COLLECTION,
+                    navigationRequest = WebNavigationRequest(System.nanoTime(), result.url),
+                    pendingRequest = null,
+                    currentTaskId = result.taskId,
                 )
                 is StartCollectionResult.LoginRequired -> state.copy(
                     startInProgress = false,
+                    resolvedPlatform = result.platform,
+                    sessionState = result.sessionState,
+                    loginRequired = true,
                     message = MainMessage.LOGIN_REQUIRED,
-                    navigationRequest = WebNavigationRequest(requestId, result.url),
-                    pendingTaskId = result.taskId,
+                    navigationRequest = WebNavigationRequest(System.nanoTime(), result.url),
+                    pendingRequest = PendingCollectionRequest(result.originalUrl, result.url),
+                    currentTaskId = null,
                 )
                 is StartCollectionResult.Error -> state.copy(
                     startInProgress = false,
+                    resolvedPlatform = result.platform,
+                    sessionState = result.sessionState,
+                    loginRequired = false,
                     message = result.reason.toMessage(),
-                    pendingTaskId = null,
+                    pendingRequest = null,
+                    currentTaskId = null,
                 )
             }
         }
     }
 
     private fun StartCollectionError.toMessage(): MainMessage = when (this) {
+        StartCollectionError.EMPTY_INPUT -> MainMessage.EMPTY_INPUT
         StartCollectionError.INVALID_URL -> MainMessage.INVALID_URL
-        StartCollectionError.INSECURE_URL, StartCollectionError.INSECURE_REDIRECT -> MainMessage.INSECURE_URL
+        StartCollectionError.INSECURE_URL,
+        StartCollectionError.INSECURE_REDIRECT,
+        -> MainMessage.INSECURE_URL
         StartCollectionError.UNSUPPORTED_PLATFORM -> MainMessage.UNSUPPORTED_PLATFORM
         StartCollectionError.REDIRECT_FAILED -> MainMessage.REDIRECT_FAILED
-        StartCollectionError.PLATFORM_UNAVAILABLE -> MainMessage.PLATFORM_UNAVAILABLE
-        StartCollectionError.SESSION_UNAVAILABLE -> MainMessage.SESSION_UNAVAILABLE
+        StartCollectionError.JIKE_NOT_IMPLEMENTED -> MainMessage.JIKE_NOT_IMPLEMENTED
+        StartCollectionError.SESSION_ERROR -> MainMessage.SESSION_ERROR
+        StartCollectionError.TASK_CREATION_FAILED -> MainMessage.TASK_CREATION_FAILED
     }
 }
