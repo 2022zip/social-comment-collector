@@ -4,6 +4,8 @@ import com.socialcommentcollector.app.data.CollectionRepository
 import com.socialcommentcollector.app.data.CollectionTaskDao
 import com.socialcommentcollector.app.data.CollectionTaskEntity
 import com.socialcommentcollector.app.data.FakeCollectionTaskDao
+import com.socialcommentcollector.app.data.FakeCommentDao
+import com.socialcommentcollector.app.data.ImmediateTransactionRunner
 import com.socialcommentcollector.app.model.CollectionStatus
 import com.socialcommentcollector.app.model.Platform
 import com.socialcommentcollector.app.platform.RedirectResolver
@@ -93,7 +95,7 @@ class StartCollectionUseCaseTest {
         val sessions = sessionManager(cookieLookup = { "sessionid=valid" })
         sessions.observePage("https://www.xiaohongshu.com/explore", true)
         val useCase = StartCollectionUseCase(
-            CollectionRepository(ThrowingTaskDao()),
+            CollectionRepository(ThrowingTaskDao(), FakeCommentDao(), ImmediateTransactionRunner),
             UrlResolver(RedirectResolver { it }),
             sessions,
         )
@@ -115,7 +117,7 @@ class StartCollectionUseCaseTest {
         redirect: suspend (URI) -> URI = { it },
     ) {
         val dao = FakeCollectionTaskDao()
-        private val repository = CollectionRepository(dao, now = { 10L })
+        private val repository = CollectionRepository(dao, FakeCommentDao(), ImmediateTransactionRunner, now = { 10L })
         val sessions = sessionManager(cookieLookup)
         val useCase = StartCollectionUseCase(repository, UrlResolver(RedirectResolver(redirect)), sessions)
     }
@@ -130,6 +132,8 @@ private fun sessionManager(cookieLookup: () -> String?) =
 private class ThrowingTaskDao : CollectionTaskDao {
     override suspend fun insert(task: CollectionTaskEntity) = error("database unavailable")
     override suspend fun update(task: CollectionTaskEntity) = Unit
+    override suspend fun getById(id: String): CollectionTaskEntity? = null
+    override suspend fun updateActualCount(id: String, count: Int, updatedAt: Long) = Unit
     override fun observeAll(): Flow<List<CollectionTaskEntity>> = flowOf(emptyList())
     override suspend fun deleteById(id: String) = Unit
 }

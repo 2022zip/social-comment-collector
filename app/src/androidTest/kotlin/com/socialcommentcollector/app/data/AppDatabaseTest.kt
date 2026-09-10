@@ -33,7 +33,11 @@ class AppDatabaseTest {
             displayedCommentCount = null, actualSavedCommentCount = 3,
             failureReason = null, createdAt = 10, updatedAt = 20,
         )
-        val repository = CollectionRepository(database.collectionTaskDao())
+        val repository = CollectionRepository(
+            database.collectionTaskDao(),
+            database.commentDao(),
+            RoomTransactionRunner(database),
+        )
         repository.saveTask(task)
         assertEquals(task, repository.getTask("task-1"))
         assertNull(repository.getTask("missing"))
@@ -45,14 +49,14 @@ class AppDatabaseTest {
         tasks.insert(CollectionTaskEntity(id = "a", originalUrl = "a", createdAt = 1, updatedAt = 1))
         tasks.insert(CollectionTaskEntity(id = "b", originalUrl = "b", createdAt = 2, updatedAt = 2))
         val first = CommentEntity(
-            id = "c1", taskId = "a", platformCommentId = "remote-1", author = "Author",
+            id = "c1", taskId = "a", platformCommentId = "remote-1", dedupKey = "platform:remote-1", author = "Author",
             content = "First", publishedAt = 10, collectedAt = 20, sortOrder = 1,
         )
         val second = CommentEntity(
-            id = "c2", taskId = "a", parentCommentId = "remote-1",
+            id = "c2", taskId = "a", dedupKey = "fallback:c2", parentCommentId = "c1",
             content = "Reply", collectedAt = 21, sortOrder = 2,
         )
-        val other = CommentEntity(id = "c3", taskId = "b", content = "Other", collectedAt = 22, sortOrder = 0)
+        val other = CommentEntity(id = "c3", taskId = "b", dedupKey = "fallback:c3", content = "Other", collectedAt = 22, sortOrder = 0)
         database.commentDao().insert(first)
         database.commentDao().insertAll(listOf(other, second))
         assertEquals(listOf(first, second), database.commentDao().getByTaskId("a"))
@@ -62,5 +66,34 @@ class AppDatabaseTest {
         tasks.deleteById("a")
         assertEquals(0, database.commentDao().countByTaskId("a"))
         assertEquals(listOf(other), database.commentDao().getByTaskId("b"))
+    }
+
+    @Test fun incrementalBatchesDeduplicateAndRecountInsideDatabase() = runBlocking {
+        val task = CollectionTaskEntity(id = "task", originalUrl = "url", createdAt = 1, updatedAt = 1)
+        database.collectionTaskDao().insert(task)
+        val repository = CollectionRepository(
+            database.collectionTaskDao(),
+            database.commentDao(),
+            RoomTransactionRunner(database),
+            now = { 50L },
+        )
+        val parent = CommentEntity(
+            id = "parent", taskId = "task", platformCommentId = "p1",
+            dedupKey = "platform:p1", content = "Parent", collectedAt = 2, sortOrder = 1,
+        )
+        val reply = CommentEntity(
+            id = "reply", taskId = "task", platformCommentId = null,
+            dedupKey = "fallback:reply", parentCommentId = "parent",
+            content = "Reply", collectedAt = 3, sortOrder = 2,
+        )
+
+        assertEquals(1, repository.persistCommentBatch("task", listOf(parent)))
+        assertEquals(2, repository.persistCommentBatch("task", listOf(parent, reply)))
+        assertEquals(2, repository.persistCommentBatch("task", listOf(reply.copy(id = "reply-reloaded"))))
+
+        val saved = database.commentDao().getByTaskId("task")
+        assertEquals(2, saved.size)
+        assertEquals("parent", saved.single { it.id == "reply" }.parentCommentId)
+        assertEquals(2, database.collectionTaskDao().getById("task")?.actualSavedCommentCount)
     }
 }

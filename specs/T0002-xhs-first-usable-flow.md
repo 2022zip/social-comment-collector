@@ -138,6 +138,22 @@ typed session error without fabricating a failed task. The V0.1 clear action rem
 all WebView cookies, but never Room data. This checkpoint does not persist the resolved
 URL or change the Room schema, and it performs no content or comment parsing.
 
+### Checkpoint C boundary
+
+Room version 2 adds explicit content fields to `CollectionTaskEntity` and a required
+comment `dedupKey`. Migration 1→2 preserves task/comment rows, maps existing platform
+comment identifiers to the same `platform:<id>` rule used by new collection, and gives
+legacy rows without platform identifiers migration-only `legacy:<id>` keys. New fallback
+keys are deterministic SHA-256 composites and never use content alone. The database
+enforces uniqueness on `(taskId, dedupKey)`.
+
+`XiaohongshuCollector` consumes a normalized, versioned page-source protocol. It persists
+content first and each comment batch in its own transaction, recounts Room rows after
+conflict-ignore insertion, and updates `actualSavedCommentCount` from that query. Only an
+explicit `End` event produces `COMPLETED`; interruption after useful persisted data produces
+`INCOMPLETE`, otherwise `FAILED`. Fixtures verify this internal protocol but do not claim
+compatibility with the live Xiaohongshu DOM, APIs, or WebView extraction behavior.
+
 ## Checkpoints
 
 1. `feat: add unified platform URL resolver`
